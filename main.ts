@@ -20,23 +20,21 @@ const handler = async (req: Request): Promise<Response> =>{
 
   if(method === "GET"){
     if(path === "/books"){
-      const id = url.searchParams.get("id");
-      if(id){
-        const librosDB = await booksCollection.find({_id:new ObjectId(id)}).toArray();
+        const librosDB = await booksCollection.find().toArray();
         const libros = await Promise.all(librosDB.map((u)=> fromModelToBook(u)));
+        return new Response(JSON.stringify(libros));
+    }else if(path.startsWith("/books/")){
+      const id = path.split("/books/")[1];
+      const librosDB = await booksCollection.find({_id:new ObjectId(id)}).toArray();
+        const libros = await librosDB.map((u)=> fromModelToBook(u));
         if(libros.length === 0){
           return new Response("error : Libro no encontrado.",{status:404})
         }
         return new Response(JSON.stringify(libros), {status: 200});
-      }else{
-        const librosDB = await booksCollection.find().toArray();
-        const libros = await Promise.all(librosDB.map((u)=> fromModelToBook(u)));
-        return new Response(JSON.stringify(libros));
-      }
     }
 
   }else if(method === "POST"){
-    if(path === "/books"){
+    if(path ===" /books"){
       const payload = await req.json();
       if(!payload.titulo || !payload.autor || !payload.year){
         return new Response("error: El título, el autor y el year son campos requeridos.", {status:400});
@@ -53,8 +51,9 @@ const handler = async (req: Request): Promise<Response> =>{
         year: payload.year,
         id: insertedId,
       }),{status:201});}
-    }else if (method === "PUT" && path === "/books") {
-      const id = url.searchParams.get("id");
+    }else if (method === "PUT"){
+      if(path.startsWith("/books/")){
+      const id = path.split("/books/")[1];
       const payload = await req.json();
     
       if (!id) {
@@ -86,12 +85,9 @@ const handler = async (req: Request): Promise<Response> =>{
         }), 
         { status: 200 }
       );
-    }else if(method === "DELETE"){
-    if(path === "/books"){
-      const id = url.searchParams.get("id");
-      if(!id){
-        return new Response("error : Id necesario", {status:400});
-      }
+    }}else if(method === "DELETE"){
+    if(path.startsWith("/books/")){
+      const id = path.split("/books/")[1];
       const { deletedCount } = await booksCollection.deleteOne({_id: new ObjectId(id)});
       if(deletedCount === 0){
         return new Response("Libro no encontrado",{status:404});
